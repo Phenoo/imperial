@@ -46,6 +46,7 @@ async function gateway(path: string, options: RequestInit = {}) {
   const payload: unknown = await response.json().catch(() => { throw new PaystackError(response.status); });
   const envelope = z.object({ status: z.boolean(), message: z.string().optional() }).safeParse(payload);
   if (!response.ok || !envelope.success || !envelope.data.status) {
+    console.warn("Paystack request rejected", { operation: path.startsWith("/transaction/initialize") ? "initialize" : "verify", status: response.status });
     throw new PaystackError(response.status, envelope.success && /duplicate.*reference|reference.*already/i.test(envelope.data.message ?? ""));
   }
   return payload;
@@ -85,7 +86,10 @@ export async function beginOnlineCheckout(order: Order) {
     throw error;
   }
   const parsed = initialization.safeParse(payload);
-  if (!parsed.success || parsed.data.data.reference !== order.id) throw new PaystackError(0);
+  if (!parsed.success || parsed.data.data.reference !== order.id) {
+    console.warn("Paystack initialization returned an unexpected response");
+    throw new PaystackError(0);
+  }
   const checkout = new URL(parsed.data.data.authorization_url);
   if (checkout.protocol !== "https:" || checkout.host !== "checkout.paystack.com" || checkout.username || checkout.password) throw new PaystackError(0);
   await attachOnlineCheckout(order.id, order.id, checkout.href, order.payment.expiresAt!);
