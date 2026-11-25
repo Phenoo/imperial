@@ -11,8 +11,19 @@ Use the staff dashboard to approve information before publishing it. The live ca
 | Exact wholesale pack contents, minimum quantities, approved prices and discounts, delivery charges, and quote expiry. Confirm any response expectation before publishing it. | **Wholesale** to prepare a saved quotation. **Business** to publish an approved response expectation. Share quotations through the customer’s agreed contact channel. |
 | Approved refund-processing expectation and any customer service timelines. | **Business**. Review the public delivery, returns, terms and privacy pages against current operations. |
 | Genuine customer feedback and permission to publish it, including permission for any name or photo used. | **Business → Customer reviews** |
-| Verified branded storefront domain and any customer messaging services. | Set `STORE_PUBLIC_URL` after the domain is connected and verified. Order emails use the existing verified Resend sender and `STORE_URL` when the service is configured. |
+| Any customer messaging services. | The branded domain is connected at **https://www.imperialgroupfoodsng.com**. Order emails require a configured, verified Resend sender; no email service has been enabled for this sandbox launch. |
 
 The catalogue uses stock in selling units per SKU. A separate individual SKU and carton SKU each need their own allocated stock. Stock pools shared across SKUs and opt-in restock reminders are not implemented. A reminder launch needs a real messaging service, customer consent and a withdrawal mechanism.
 
 Shop interactions emit a first-party browser event. To collect daily counts in Firestore, set `NEXT_PUBLIC_STORE_ANALYTICS=1` and deploy. Use production request limits for the anonymous endpoint before enabling collection at scale. The counters distinguish demo traffic, exclude customer details and do not represent payments or completed purchases.
+
+## Connected services — 25 November 2026
+
+- Production is **Imperial → imperial** (`imperial-b3f3/imperial`) on Vercel, deployed from **Phenoo/imperial** on GitHub. The earlier `logicleads-projects/imperial-foods-beverages` deployment is a separate legacy project.
+- The branded domain uses the existing **imperial-foods-and-beverages** Firebase database and staff accounts. Its public hostnames are authorised in Firebase Authentication. Staff APIs still require an authenticated account with the admin claim.
+- New checkouts use **Paystack test mode**. The secret key is stored server-side as a Vercel Secret. Test callback and signed webhook URLs point to the branded domain. A hosted sandbox payment, tracking, duplicate requests, stock restoration and the fulfilment block were verified. Keep `STORE_DEMO_CATALOG=1`; no live activation has been performed.
+- Search Console ownership is verified using the homepage HTML tag under Ochor's Google account. `/sitemap.xml` was submitted successfully and contains 86 product URLs plus 10 public pages. Preserve the verification token. Public indexing is enabled independently of sandbox payments; private routes remain excluded.
+- GA4 property **565847563**, account **417449750**, stream **16412489234**, measurement ID **G-NC2Y2YKK54** are owned by Ochor's Google account. The web stream uses Nigeria time and NGN. Enhanced measurement and optional account data sharing are disabled. The consented tag sends public page views and existing shopping event names with `commerce_mode=sandbox`; it does not send purchase events for test payments. General Analytics properties exclude customer contact details, search text and order references.
+- Visitors can decline analytics or withdraw through **Analytics preferences**. Google reports may take time to populate after the first events arrive. No reviews, sales totals or customer counts have been manufactured.
+
+Before activating real payments in a separate approved task, review merchant-approved catalogue data, delivery operations, business contact details, fulfilment procedures and notification configuration. Existing unresolved pack specifications continue through the quotation route.
