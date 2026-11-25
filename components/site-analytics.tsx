@@ -31,6 +31,12 @@ function subscribe(listener: () => void) {
 }
 const serverSnapshot = () => "pending";
 const publicPage = (path: string) => !/^\/(?:admin|api|catalogue-update|checkout|track|saved)(?:\/|$)/.test(path);
+const googleBootstrap = `
+window.dataLayer=window.dataLayer||[];
+window.gtag=function(){window.dataLayer.push(arguments);};
+window.gtag('consent','default',{analytics_storage:'granted',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
+window.gtag('set',{page_location:window.location.origin+window.location.pathname,page_referrer:'',allow_google_signals:false,allow_ad_personalization_signals:false,send_page_view:false});
+`;
 
 function Analytics({ id, mode }: { id: string; mode: "sandbox" | "live" }) {
   const pathname = usePathname();
@@ -77,15 +83,14 @@ function Analytics({ id, mode }: { id: string; mode: "sandbox" | "live" }) {
   return <>
     {allowed && publicPage(pathname) && <>
       <Script id="imperial-ga-bootstrap" strategy="afterInteractive" onReady={() => setBootstrapReady(true)}>
-        {"window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments);};"}
+        {googleBootstrap}
       </Script>
       {bootstrapReady && <Script id="imperial-google-analytics" src={`https://www.googletagmanager.com/gtag/js?id=${id}`} strategy="afterInteractive" onReady={() => {
-      if (snapshot() !== "granted" || !publicPage(location.pathname) || !window.gtag) return;
-      window[`ga-disable-${id}`] = false;
-      window.gtag("consent", "default", { analytics_storage: "granted", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" });
-      window.gtag("js", new Date());
-      window.gtag("config", id, { send_page_view: false, allow_google_signals: false, allow_ad_personalization_signals: false, page_location: location.origin + pathname, page_referrer: "" });
-      setReady(true);
+        if (snapshot() !== "granted" || !publicPage(location.pathname) || !window.gtag) return;
+        window[`ga-disable-${id}`] = false;
+        window.gtag("js", new Date());
+        window.gtag("config", id, { send_page_view: false, allow_google_signals: false, allow_ad_personalization_signals: false, page_location: location.origin + pathname, page_referrer: "" });
+        setReady(true);
       }}/>} 
     </>}
     {publicPage(pathname) && <>
