@@ -197,7 +197,9 @@ export const onlinePaymentLabel: Record<OnlinePaymentStatus, string> = {
   pending: "Awaiting online payment", paid: "Paid online", expired: "Payment window expired",
   refund_required: "Refund required", partially_refunded: "Partially refunded", refunded: "Refunded",
 };
-export type OnlinePayment = { status: OnlinePaymentStatus; expiresAt?: string; checkoutId?: string; checkoutUrl?: string };
+export type PaymentProvider = "bachs" | "paystack";
+export const paymentProviderName = (provider?: PaymentProvider) => provider === "paystack" ? "Paystack" : "Bachs";
+export type OnlinePayment = { provider?: PaymentProvider; status: OnlinePaymentStatus; expiresAt?: string; checkoutId?: string; checkoutUrl?: string };
 export type OrderLine = { productId: string; name: string; size: string; price: number; quantity: number };
 export type Order = {
   id: string; customer: Customer; items: OrderLine[]; subtotal: number; shipping: number; total: number;

@@ -3,18 +3,19 @@ import Link from "next/link";
 import { after } from "next/server";
 import { CheckCircle2, Clock, ShoppingBag } from "lucide-react";
 import { PaidBasket } from "@/components/paid-basket";
-import { onlinePaymentMode, reconcileOnlineOrder } from "@/lib/bachs";
-import { naira, onlinePaymentLabel } from "@/lib/commerce";
+import { onlinePaymentMode, reconcileOnlineOrder } from "@/lib/payments";
+import { naira, onlinePaymentLabel, paymentProviderName } from "@/lib/commerce";
 import { sendOrderReceipt } from "@/lib/order-mail";
 import { orderOperationsMode } from "@/lib/order-operations";
 import { findOnlineOrder } from "@/lib/store-server";
+import { firebaseProjectId } from "@/lib/firebase-server";
 import { orderId } from "@/lib/validation";
 
 export const metadata: Metadata = { title: "Payment status", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 export default async function PaymentResult({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
   const parsed = orderId.safeParse((await searchParams).ref);
-  const order = parsed.success && onlinePaymentMode() ? await findOnlineOrder(parsed.data) : null;
+  const order = parsed.success && firebaseProjectId() ? await findOnlineOrder(parsed.data) : null;
   if (!order?.payment) return <div className="shell subpage"><section className="checkout-success empty-state">
     <ShoppingBag size={44}/><h1>Payment reference unavailable</h1><Link className="button button-green" href="/checkout">Return to checkout</Link>
   </section></div>;
@@ -42,7 +43,7 @@ export default async function PaymentResult({ searchParams }: { searchParams: Pr
     <div className="flex flex-wrap justify-center gap-3">
       {payment.status === "pending" && <form method="get"><input type="hidden" name="ref" value={updated.id}/><button type="submit" className="button button-green">Refresh status</button></form>}
       {payment.status === "pending" && payment.checkoutUrl &&
-        <a href={payment.checkoutUrl} rel="noreferrer" className="button button-outline">Return to Bachs</a>}
+        <a href={payment.checkoutUrl} rel="noreferrer" className="button button-outline">Return to {paymentProviderName(payment.provider)}</a>}
       {payment.status === "expired" && <Link href="/checkout" className="button button-green">Return to checkout</Link>}
       <Link href={`/track?ref=${updated.id}`} className="button button-outline">Track this order</Link>
     </div>

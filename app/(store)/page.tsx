@@ -4,7 +4,7 @@ import { ArrowRight, Boxes, CreditCard, Truck } from "lucide-react";
 import { BrandMarquee } from "@/components/brand-marquee";
 import { ProductGrid } from "@/components/catalog-view";
 import { ApprovedReviews } from "@/components/approved-reviews";
-import { onlinePaymentMode } from "@/lib/bachs";
+import { onlinePaymentMode } from "@/lib/payments";
 import { getBusinessDetails } from "@/lib/business-server";
 import { categories } from "@/lib/commerce";
 import { canonicalMetadata } from "@/lib/site-url";

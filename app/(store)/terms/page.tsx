@@ -20,7 +20,7 @@ export default async function TermsPage() {
       <h2>Orders and payment</h2>
       <p>Review the products, quantities, delivery address and phone number before placing your order. Keep the order reference shown at checkout. Our team may use your contact details to confirm the order or resolve an issue with availability.</p>
       <p>Prices are shown in Nigerian naira. Checkout shows the available options for your location and a delivered total when a fee is known. {payment.options}</p>
-      {payment.sandbox && <p>Online payments on this store run in the Bachs sandbox. Simulated transactions do not charge you or result in delivery.</p>}
+      {payment.sandbox && <p>Online payments on this store run in the {payment.provider} test environment. Simulated transactions do not charge you or result in delivery.</p>}
     </section>
     <section>
       <h2>Delivery</h2>

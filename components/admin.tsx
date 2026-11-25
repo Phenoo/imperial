@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Building2, ChevronDown, ClipboardList, LayoutDashboard, LogOut, Package, Plus, RefreshCw, Search, ShieldCheck, Truck, Warehouse } from "lucide-react";
-import { canCheckoutProduct, categoryName, packLabel, productAvailability, deliveryZones, naira, nextStatuses, onlinePaymentLabel, statusLabel, type Order, type OrderStatus, type Product } from "@/lib/commerce";
+import { canCheckoutProduct, categoryName, packLabel, productAvailability, deliveryZones, naira, nextStatuses, onlinePaymentLabel, paymentProviderName, statusLabel, type Order, type OrderStatus, type Product } from "@/lib/commerce";
 import type { InventoryEvent, ProductRecord } from "@/lib/store-server";
 import { staffRequest as api } from "@/lib/admin-client";
 import { staffAuth, staffConfigured } from "@/lib/firebase-client";
@@ -137,7 +137,7 @@ function OrderDetails({ order, busy, onUpdate, onCheckPayment, demoEnvironment }
       </div>}
       {order.payment?.checkoutId && <div className="order-actions">
         <button className="button button-outline" type="button" disabled={busy} onClick={() => onCheckPayment(order.id)}>Refresh payment</button>
-        {mode === "normal" && order.payment.status === "refund_required" && <p className="muted">Issue the refund in Bachs using this order reference, then refresh the payment here.</p>}
+        {mode === "normal" && order.payment.status === "refund_required" && <p className="muted">Issue the refund in {paymentProviderName(order.payment.provider)} using this order reference, then refresh the payment here.</p>}
       </div>}
       {(canCancel || (canFulfil && nextStatuses[order.status].length > 0)) && <div className="order-actions">
         {canFulfil && nextStatuses[order.status].filter((status) => status !== "cancelled").map((status) => <button className="button button-green" key={status} type="button" disabled={busy} onClick={() => onUpdate(order.id, status)}>Mark {fulfilmentStatusLabel[status].toLowerCase()}</button>)}

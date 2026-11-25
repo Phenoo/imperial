@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, CircleCheck, CreditCard, MapPin, ShoppingBag, Truck } from "lucide-react";
-import { naira, normalizePhone, packLabel, productLimit, sellingUnitLabel, type OrderSummary } from "@/lib/commerce";
+import { naira, normalizePhone, paymentProviderName, packLabel, productLimit, sellingUnitLabel, type OrderSummary, type PaymentProvider } from "@/lib/commerce";
 import { estimateDelivery } from "@/lib/delivery-estimate";
 import { nigerianStates } from "@/lib/nigerian-states";
 import { recordShopEvent } from "@/lib/shop-analytics";
@@ -16,8 +16,9 @@ import { Quantity } from "./shop-chrome";
 
 type ApiError = { error: string; fields?: { field: string; message: string }[] };
 
-export function Checkout({ onlinePayment, allowDeliveryPayment, whatsapp }: { onlinePayment: "sandbox" | "live" | null; allowDeliveryPayment: boolean; whatsapp: string | null }) {
+export function Checkout({ onlinePayment, allowDeliveryPayment, whatsapp, provider = "bachs" }: { provider?: PaymentProvider; onlinePayment: "sandbox" | "live" | null; allowDeliveryPayment: boolean; whatsapp: string | null }) {
   const shop = useShop();
+  const providerName = paymentProviderName(provider);
   const [destination, setDestination] = useState({ state: "", town: "" });
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
@@ -132,7 +133,7 @@ export function Checkout({ onlinePayment, allowDeliveryPayment, whatsapp }: { on
           <div className="form-grid mt-3">
             <label>Recipient name<input name="name" autoComplete="name" required minLength={2} maxLength={90}/></label>
             <label>Nigerian mobile number<input name="phone" type="tel" autoComplete="tel" placeholder="0801 234 5678" required maxLength={20}/></label>
-            <label className="field-wide">Email <span className="optional">(optional)</span><input name="email" type="email" autoComplete="email" maxLength={150} aria-describedby="checkout-email-use"/><small id="checkout-email-use" className="muted">For your receipt and order updates when email is available.</small></label>
+            <label className="field-wide">Email {!(method === "online" && provider === "paystack") && <span className="optional">(optional)</span>}<input name="email" type="email" autoComplete="email" required={method === "online" && provider === "paystack"} maxLength={150} aria-describedby="checkout-email-use"/><small id="checkout-email-use" className="muted">{method === "online" && provider === "paystack" ? "Paystack requires your email address to start checkout." : "For your receipt and order updates when email is available."}</small></label>
             <label className="field-wide">Street address<textarea name="address" rows={2} autoComplete="street-address" minLength={8} maxLength={250} placeholder="House number, street and neighbourhood" required/></label>
             <label>Landmark <span className="optional">(optional)</span><input name="landmark" maxLength={100}/></label>
             <label>If an item is unavailable<select name="substitution"><option value="contact">Contact me before replacing it</option><option value="remove">Remove the unavailable item</option></select></label>
@@ -141,7 +142,7 @@ export function Checkout({ onlinePayment, allowDeliveryPayment, whatsapp }: { on
           {onlinePayment ? <fieldset className="checkout-payment">
             <legend>Payment method</legend>
             {allowDeliveryPayment && <label className="payment-method"><input type="radio" name="payment" value="delivery" checked={method === "delivery"} onChange={() => setMethod("delivery")}/><div><strong>Pay on delivery</strong><p>Pay when your groceries arrive.</p></div></label>}
-            <label className="payment-method"><input type="radio" name="payment" value="online" checked={method === "online"} onChange={() => setMethod("online")}/><div><strong>{onlinePayment === "sandbox" ? "Test online payment" : "Pay online with Bachs"}</strong><p>{onlinePayment === "sandbox" ? "Opens the Bachs sandbox." : "Choose an available payment method on Bachs’ secure checkout."}</p></div></label>
+            <label className="payment-method"><input type="radio" name="payment" value="online" checked={method === "online"} onChange={() => setMethod("online")}/><div><strong>{onlinePayment === "sandbox" ? `Test payment with ${providerName}` : `Pay online with ${providerName}`}</strong><p>{onlinePayment === "sandbox" ? `Opens ${providerName} in test mode.` : `Choose an available payment method on ${providerName}’s secure checkout.`}</p></div></label>
           </fieldset> : allowDeliveryPayment ? <div className="payment-method"><CreditCard size={23}/><div><strong>Pay on delivery</strong><p>Payment is due when your groceries arrive.</p></div><Check size={20}/></div> : null}
         </fieldset>
       </fieldset>
@@ -171,7 +172,7 @@ export function Checkout({ onlinePayment, allowDeliveryPayment, whatsapp }: { on
             {(!shop.available || (!allowDeliveryPayment && !onlinePayment)) && <p className="inline-notice">Checkout is unavailable right now.</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
             <p className="muted mt-3 text-sm">By placing your order, you agree to the <Link className="text-link" href="/terms">Terms &amp; Conditions</Link>. See how we use your details in our <Link className="text-link" href="/privacy">Privacy Policy</Link>.</p>
-            <button className="button button-green" type="submit" disabled={working || !shop.available || (!allowDeliveryPayment && !onlinePayment) || basketNeedsReview || estimate.kind !== "priced"}>{working ? (method === "online" ? "Opening Bachs…" : "Placing order…") : (method === "online" ? "Continue to Bachs" : "Place order")} <ArrowRight size={19}/></button>
+            <button className="button button-green" type="submit" disabled={working || !shop.available || (!allowDeliveryPayment && !onlinePayment) || basketNeedsReview || estimate.kind !== "priced"}>{working ? (method === "online" ? `Opening ${providerName}…` : "Placing order…") : (method === "online" ? `Continue to ${providerName}` : "Place order")} <ArrowRight size={19}/></button>
           </>}
         <Link href="/contact" className="text-link mt-3 text-sm">Need help with your order?</Link>
       </aside>

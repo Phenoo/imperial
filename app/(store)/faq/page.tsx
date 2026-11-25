@@ -32,7 +32,7 @@ const faqGroups = (delivery: DeliverySettings, wholesaleResponse: string) => {
         question: "How do I pay?",
         answer: <>
           {payment.options && <p>{payment.options}</p>}
-          {payment.sandbox && <p>This store uses simulated payments through Bachs. Simulated transactions do not result in delivery.</p>}
+          {payment.sandbox && <p>This store uses simulated payments through {payment.provider}. Simulated transactions do not result in delivery.</p>}
           {!payment.options && !payment.sandbox && <p>Check the options shown at checkout or contact us.</p>}
         </>,
       },

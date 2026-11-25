@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!product) return { title: "Product not found" };
   return {
     title: product.name, description: product.description,
+    openGraph: { title: product.name, description: product.description, images: [{ url: product.image, alt: product.name }] },
     ...canonicalMetadata(`/products/${product.id}`),
   };
 }

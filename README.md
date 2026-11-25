@@ -34,9 +34,11 @@ npm run build
 npm run test:integration
 node --experimental-strip-types --test tests/product.test.mjs tests/delivery.test.mjs
 node --env-file-if-exists=.env.local --test tests/business.integration.test.mjs
+node --env-file-if-exists=.env.local --conditions=react-server --experimental-transform-types --test tests/paystack.integration.test.mjs
 ```
 
 The integration tests require a running local app and both emulators. They create and clean up their own test data and accounts. Use `TEST_STORE_URL` for a different local port.
+Run the original fulfilment integration suite with `STORE_DEMO_CATALOG=0` on the local app, with no payment credentials. The Paystack suite uses a mock gateway and local emulators; it does not contact Paystack or place real orders.
 
 ## Set up a live store
 
@@ -48,8 +50,18 @@ The integration tests require a running local app and both emulators. They creat
 
 ## Payments and receipts
 
-- Set `STORE_URL` to the checkout’s public HTTPS origin. Bachs requires a publicly reachable return URL. For local sandbox testing, use an HTTPS tunnel that routes back to the same local Firebase emulators.
-- Add the server-only `BACHS_API_KEY` with payment read and write scopes. Register `/api/checkout/bachs-webhook` for `collection.succeeded`, `checkout.completed`, and `checkout.expired`, then set `BACHS_WEBHOOK_SECRET` to the signing secret for that endpoint. Keep sandbox and live credentials separate. [Bachs checkout documentation](https://docs.bachs.io/guides/checkout/checkout-sessions)
-- The server calculates the naira total and reserves inventory once when it creates the order. It verifies the checkout reference, currency, and amount against Bachs before releasing the order for fulfilment. Staff can refresh payment status in the dashboard. A cancellation of a paid order flags it for a refund in the Bachs dashboard, and staff can refresh the refund status afterwards.
-- Set `RESEND_API_KEY` and `STORE_ORDER_FROM` to send receipts and tracking links to customers who provide an email. The sender must be configured in Resend.
-- For hosted demos, set `STORE_DEMO_CATALOG=1` and use Bachs sandbox credentials. To launch live, use merchant-approved catalogue data, confirm delivery and support settings, remove demo mode, then configure the live Bachs API key and webhooks. Staff can set their password from the dashboard sign-in screen.
+- Set server-only `PAYSTACK_SECRET_KEY` to the merchant’s `sk_test_` key. The Paystack key selects Paystack for new checkouts. Keep `STORE_DEMO_CATALOG=1` for test mode. No public key or card details are required on the storefront.
+- Set `STORE_URL` to the storefront’s HTTPS origin. Register `/api/checkout/paystack-webhook` in the Paystack test dashboard. If the account uses a `whsec_` webhook signing secret, set `PAYSTACK_WEBHOOK_SECRET`. Accounts using the legacy `x-paystack-signature` header are verified with the test secret key until a signing secret is configured.
+- Paystack requires a customer email for online checkout. Amounts and delivery charges are calculated by the server and converted from naira to kobo. Callbacks and signed webhooks verify the reference, NGN amount and test/live environment before marking a payment confirmed.
+- Existing Bachs orders retain their original provider and can still be reconciled when the Bachs credentials remain configured. Keep `/api/checkout/bachs-webhook` registered for those orders.
+- Stock reservations, releases and verified late payments are processed transactionally. Test purchases remain simulated and cannot enter fulfilment or send real fulfilment notifications.
+- Refunds are issued through the original provider dashboard. Refresh payment status after a full reversal. Partial Paystack refunds require staff review in Paystack.
+- Set `RESEND_API_KEY` and `STORE_ORDER_FROM` to send receipts and tracking links to customers who provide an email. The sender must be verified in Resend. Simulated orders do not send fulfilment messages.
+
+## Branded domain, search and analytics
+
+- Set `STORE_URL` and `STORE_PUBLIC_URL` to `https://www.imperialgroupfoodsng.com` on the domain's production project. Canonicals, product enquiry links, payment callbacks and the sitemap use this origin.
+- Set `GOOGLE_SITE_VERIFICATION` to the merchant's Search Console HTML verification token, verify ownership and submit `/sitemap.xml` in Search Console.
+- `STORE_SEARCH_INDEXING=1` allows catalogue indexing while `STORE_DEMO_CATALOG=1` keeps transactions simulated. Preview deployments remain excluded, as do private staff, checkout, tracking and catalogue invitation routes. Indexing does not activate payments.
+- Set `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` to the merchant's GA4 web stream ID. Analytics loads only after consent, excludes private page views and URL query strings, and forwards the existing shopping event names without customer details. Disable enhanced measurement in the Google web stream: page views and shopping events are sent explicitly. Advertising signals are disabled. No purchase event is emitted for sandbox transactions.
+- Visitors can withdraw consent through **Analytics preferences**. Configure the GA4 `commerce_mode` event dimension to distinguish sandbox activity from live commerce if reporting is enabled.

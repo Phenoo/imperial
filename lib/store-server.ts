@@ -5,7 +5,7 @@ import type { DocumentSnapshot } from "firebase-admin/firestore";
 import { ZodError, type z } from "zod";
 import { knownProductDetails, starterCatalog } from "./catalog";
 import { catalogueSuggestionsCollection } from "./catalogue-invite";
-import { canCheckoutProduct, isMultiUnit, naira, nextStatuses, packLabel, productSpecification, publicProduct, sellingUnitLabel, type OnlinePayment, type Order, type OrderStatus, type OrderSummary, type Product } from "./commerce";
+import { canCheckoutProduct, isMultiUnit, naira, nextStatuses, packLabel, productSpecification, publicProduct, sellingUnitLabel, type OnlinePayment, type PaymentProvider, type Order, type OrderStatus, type OrderSummary, type Product } from "./commerce";
 import { estimateDelivery } from "./delivery-estimate";
 import { getDeliverySettings } from "./delivery-server";
 import { demoCatalog } from "./demo-catalog";
@@ -75,11 +75,11 @@ export function toSummary(order: Order): OrderSummary {
   return { id, status, subtotal, shipping, total, createdAt, updatedAt, ...(simulated !== undefined && { simulated }), ...(order.payment && { paymentStatus: order.payment.status }) };
 }
 
-async function persistOrder({ items, customer, key }: Checkout, online: boolean) {
+async function persistOrder({ items, customer, key }: Checkout, online: boolean, gateway?: { provider: PaymentProvider; simulated: boolean }) {
   const db = database();
   const reference = db.collection("orders").doc(`IP-${randomBytes(12).toString("hex").toUpperCase()}`);
   const retry = db.collection("orderRequests").doc(key);
-  const digest = createHash("sha256").update(JSON.stringify({ items, customer, ...(online && { payment: "bachs" }) })).digest("hex");
+  const digest = createHash("sha256").update(JSON.stringify({ items, customer, ...(online && { payment: gateway?.provider ?? "bachs" }) })).digest("hex");
 
   return db.runTransaction(async (transaction) => {
     const previous = await transaction.get(retry);
@@ -112,7 +112,7 @@ async function persistOrder({ items, customer, key }: Checkout, online: boolean)
     if (delivery.kind !== "priced") throw new StoreError("This basket requires a delivery quote. Review your delivery options before checking out.", 409);
     const shipping = delivery.fee;
     const now = new Date().toISOString();
-    const simulated = isDemoStore() || (online && process.env.BACHS_API_KEY?.trim().startsWith("sk_sandbox_") === true);
+    const simulated = isDemoStore() || (online && (gateway?.simulated ?? process.env.BACHS_API_KEY?.trim().startsWith("sk_sandbox_") === true));
     const order: Order = {
       id: reference.id, items: lines.map(({ product, ...item }, index) => {
         const remaining = product.stock - item.quantity;
@@ -123,7 +123,7 @@ async function persistOrder({ items, customer, key }: Checkout, online: boolean)
       customer, subtotal, shipping, total: subtotal + shipping, status: "placed", createdAt: now, updatedAt: now,
       fulfilmentEvents: [{ status: "placed", at: now }],
       simulated,
-      ...(online && { payment: { status: "pending", expiresAt: new Date(Date.now() + 20 * 60_000).toISOString() } }),
+      ...(online && { payment: { status: "pending", provider: gateway?.provider ?? "bachs", ...(gateway?.provider === "paystack" && { checkoutId: reference.id }), expiresAt: new Date(Date.now() + 20 * 60_000).toISOString() } }),
     };
     transaction.create(reference, order);
     transaction.create(retry, { digest, orderId: reference.id });
@@ -135,8 +135,8 @@ export async function placeOrder(checkout: Checkout) {
   return toSummary(await persistOrder(checkout, false));
 }
 
-export function reserveOnlineOrder(checkout: Checkout) {
-  return persistOrder(checkout, true);
+export function reserveOnlineOrder(checkout: Checkout, gateway?: { provider: PaymentProvider; simulated: boolean }) {
+  return persistOrder(checkout, true, gateway);
 }
 
 export async function findOnlineOrder(id: string) {
@@ -153,7 +153,7 @@ export async function attachOnlineCheckout(id: string, checkoutId: string, check
     const order = readOrder(snapshot);
     if (order.payment?.status !== "pending") throw new StoreError("That payment window closed. Please start a new checkout.", 409);
     if (order.payment.checkoutId && order.payment.checkoutId !== checkoutId) throw new StoreError("This order already has a checkout session.", 409);
-    transaction.update(reference, { payment: { status: "pending", checkoutId, checkoutUrl, expiresAt } });
+    transaction.update(reference, { payment: { ...order.payment, status: "pending", checkoutId, checkoutUrl, expiresAt } });
   });
 }
 
@@ -166,17 +166,20 @@ export async function applyOnlinePayment(id: string, checkoutId: string | undefi
     const order = readOrder(snapshot);
     const payment = order.payment;
     if (!payment || payment.checkoutId !== checkoutId) return order;
-    const next: OnlinePayment = { status, ...(checkoutId && { checkoutId }) };
+    const next: OnlinePayment = { status, ...(payment.provider && { provider: payment.provider }), ...(checkoutId && { checkoutId }) };
     let orderStatus = order.status;
 
     if (status === "paid") {
       if (payment.status === "expired") {
         const products = await transaction.getAll(...order.items.map((item) => db.collection("products").doc(item.productId)));
         const inventory = products.map((product) => product.exists ? readProduct(product) : null);
-        if (inventory.every((product, index) => product?.active && product.stock >= order.items[index].quantity)) {
-          products.forEach((product, index) => transaction.update(product.ref, {
-            stock: (inventory[index]?.stock ?? 0) - order.items[index].quantity,
-          }));
+        if (inventory.every((product, index) => product?.active && canCheckoutProduct(product) && packLabel(product) === order.items[index].size && product.stock >= order.items[index].quantity)) {
+          products.forEach((snapshot, index) => {
+            const product = inventory[index]!;
+            const remaining = product.stock - order.items[index].quantity;
+            transaction.update(snapshot.ref, { stock: remaining });
+            recordInventory(transaction, product, product.stock, remaining, new Date().toISOString(), { orderId: order.id, simulated: order.simulated === true });
+          });
           orderStatus = "placed";
         } else {
           next.status = "refund_required";
@@ -211,8 +214,8 @@ async function restoreInventory(transaction: FirebaseFirestore.Transaction, orde
     const current = readProduct(product);
     const restored = current.stock + order.items[index].quantity;
     transaction.update(product.ref, { stock: restored });
-    if (staffId && current.stockVerified) recordInventory(transaction, current, current.stock, restored, new Date().toISOString(), {
-      staffId, orderId: order.id, simulated: orderOperationsMode(order, isDemoStore()) === "simulated",
+    if (current.stockVerified) recordInventory(transaction, current, current.stock, restored, new Date().toISOString(), {
+      ...(staffId && { staffId }), orderId: order.id, simulated: orderOperationsMode(order, isDemoStore()) === "simulated",
     });
   });
 }
