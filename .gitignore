@@ -1,0 +1,14 @@
+node_modules/
+.vercel/
+.next/
+out/
+.env*
+!.env.example
+*.tsbuildinfo
+firebase-debug.log
+firestore-debug.log
+firebase-export-*/
+playwright-report/
+test-results/
+.DS_Store
+.vercel

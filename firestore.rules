@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only the Next.js server accesses Firestore. Admin API routes verify staff claims.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
