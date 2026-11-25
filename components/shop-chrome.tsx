@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, Clock3, Heart, MapPin, Menu, Minus, Plus, ShoppingBag, X } from "lucide-react";
-import { categories, naira, packLabel, productLimit, sellingUnitLabel } from "@/lib/commerce";
+import { basketProductLimit, categories, isPreviewProduct, naira, packLabel, sellingUnitLabel } from "@/lib/commerce";
 import { recordShopEvent } from "@/lib/shop-analytics";
 import { BasketReview } from "./basket-review";
 import { Brand } from "./brand";
@@ -91,7 +91,7 @@ export function SavedProductsPanel() {
       <div><Link onClick={close} href={`/products/${product.id}`}>{product.name}</Link><p>{[packLabel(product), product.price === null ? "Price on request" : naira(product.price)].filter(Boolean).join(" · ")}</p>
         {product.price === null
           ? <Link className="text-link" href={`/wholesale?product=${encodeURIComponent(product.id)}`} onClick={close}>Request a carton quote</Link>
-          : <button className="text-link" disabled={(shop.items.find((item) => item.product.id === product.id)?.quantity ?? 0) + (product.minimumQuantity ?? 1) > productLimit(product)} onClick={() => shop.add(product)} type="button">Add to basket</button>}
+          : <button className="text-link" disabled={(shop.items.find((item) => item.product.id === product.id)?.quantity ?? 0) + (product.minimumQuantity ?? 1) > basketProductLimit(product)} onClick={() => shop.add(product)} type="button">Add to basket</button>}
       </div>
       <button className="icon-button" type="button" aria-label={`Remove ${product.name} from saved products`} onClick={() => shop.toggleSaved(product.id)}><X size={18}/></button>
     </div>)}
@@ -114,8 +114,8 @@ function CartSheet() {
         {shop.items.map(({ product, quantity }) => <div className="drawer-line" key={product.id}>
           <ProductImage product={product} sizes="72px" />
           <div><Link onNavigate={close} href={`/products/${product.id}`}>{product.name}</Link><p>{packLabel(product)} · {naira(product.price)} per {sellingUnitLabel(product.saleUnit)}</p>
-            <Quantity quantity={quantity} min={product.minimumQuantity ?? 1} max={productLimit(product)} onChange={(value) => shop.setQuantity(product, value)} label={product.name} />
-            {quantity > product.stock && <small className="form-error">Only {product.stock} in stock.</small>}
+            <Quantity quantity={quantity} min={product.minimumQuantity ?? 1} max={basketProductLimit(product)} onChange={(value) => shop.setQuantity(product, value)} label={product.name} />
+            {!isPreviewProduct(product) && quantity > product.stock && <small className="form-error">Only {product.stock} in stock.</small>}
             {quantity < (product.minimumQuantity ?? 1) && <small className="form-error">Minimum {product.minimumQuantity} {sellingUnitLabel(product.saleUnit, product.minimumQuantity)}.</small>}
             <p><strong>{naira(quantity * product.price)}</strong></p>
           </div>

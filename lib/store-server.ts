@@ -9,11 +9,11 @@ import { catalogueFallback } from "./catalogue-fallback";
 import { canCheckoutProduct, isMultiUnit, naira, nextStatuses, packLabel, productSpecification, publicProduct, sellingUnitLabel, type OnlinePayment, type PaymentProvider, type Order, type OrderStatus, type OrderSummary, type Product } from "./commerce";
 import { estimateDelivery } from "./delivery-estimate";
 import { getDeliverySettings } from "./delivery-server";
-import { demoCatalog } from "./demo-catalog";
+import { demoCatalog, ownerPreviewCatalog } from "./demo-catalog";
 import { database, firebaseProjectId } from "./firebase-server";
 import { orderOperationsMode, reliableFulfilment, type TrackingResult } from "./order-operations";
 import { bulkPricingSchema, checkoutSchema, productSchema, type CatalogueUpdate } from "./validation";
-import { isDemoStore } from "./store-settings";
+import { isDemoStore, isOwnerPreview } from "./store-settings";
 import { cachedPublicStoreRead } from "./public-store-cache";
 
 export class StoreError extends Error {
@@ -68,6 +68,7 @@ const readPublicCatalogue = cachedPublicStoreRead<Storefront>("catalogue", async
 }, () => ({ products: catalogueFallback(), available: false, catalogFailed: true }));
 
 export const getStorefront = cache(async (): Promise<Storefront> => {
+  if (isOwnerPreview()) return { products: ownerPreviewCatalog(), available: false, catalogFailed: false };
   if (!firebaseProjectId()) return { products: (isDemoStore() ? demoCatalog() : starterCatalog).map(publicProduct), available: false, catalogFailed: false };
   return readPublicCatalogue();
 });

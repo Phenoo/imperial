@@ -51,6 +51,10 @@ export function isDemoStore() {
   return process.env.STORE_DEMO_CATALOG === "1";
 }
 
+export function isOwnerPreview() {
+  return isDemoStore() && process.env.STORE_OWNER_PREVIEW !== "0";
+}
+
 export function payOnDeliveryEnabled() {
   return !isDemoStore() || Boolean(process.env.FIREBASE_PROJECT_ID?.startsWith("demo-"));
 }

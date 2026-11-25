@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
-  canCheckoutProduct, deliveryZones, MAX_ORDER_LINES, MAX_PER_ITEM, packLabel, productLimit, productSpecification,
+  basketProductLimit, canCheckoutProduct, deliveryZones, isPreviewProduct, MAX_ORDER_LINES, MAX_PER_ITEM, packLabel, productLimit, productSpecification,
   type DeliverySettings, type Product, type ZoneId,
 } from "@/lib/commerce";
 import { recordShopEvent } from "@/lib/shop-analytics";
@@ -115,13 +115,13 @@ export function ShopProvider({ children, products, available, delivery, whatsapp
   const [message, setMessage] = useState({ text: "", sequence: 0 });
   const byId = new Map(products.map((product) => [product.id, product]));
   const items = products.flatMap((product): CartLine[] => {
-    if (product.price === null || !canCheckoutProduct(product) || !Object.hasOwn(cart, product.id)) return [];
+    if (product.price === null || (!canCheckoutProduct(product) && !isPreviewProduct(product)) || !Object.hasOwn(cart, product.id)) return [];
     return [{ product: { ...product, price: product.price }, quantity: cart[product.id] }];
   });
   const unavailableCount = Object.keys(cart).length - items.length;
   const count = items.reduce((total, { quantity }) => total + quantity, 0);
   const subtotal = items.reduce((total, { product, quantity }) => total + product.price * quantity, 0);
-  const invalidQuantities = items.some(({ product, quantity }) => quantity > productLimit(product) || quantity < (product.minimumQuantity ?? 1));
+  const invalidQuantities = items.some(({ product, quantity }) => quantity > basketProductLimit(product) || quantity < (product.minimumQuantity ?? 1));
   const changes = items.flatMap(({ product }) => {
     const prior = reviewed[product.id];
     return prior?.price === product.price && prior.specification === productSpecification(product) ? [] : [{ product, prior }];
@@ -134,7 +134,7 @@ export function ShopProvider({ children, products, available, delivery, whatsapp
     update((state) => {
       const previous = Object.hasOwn(state.cart, product.id) ? state.cart[product.id] : 0;
       const quantity = requested(previous);
-      const limit = productLimit(product);
+      const limit = basketProductLimit(product);
       const minimum = product.minimumQuantity ?? 1;
       if (!Number.isInteger(quantity)) return state;
       if (quantity > previous && quantity > limit) {

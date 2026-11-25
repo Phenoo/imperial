@@ -10,7 +10,7 @@ import { ProductAvailability, ProductCard, ProductPrice } from "@/components/pro
 import { ProductImage } from "@/components/product-image";
 import { ProductEnquiry, ProductViewEvent } from "@/components/product-enquiry";
 import { ProductPurchase } from "@/components/product-purchase";
-import { categoryName, foodInfoFields, packLabel, productAvailability, type Product } from "@/lib/commerce";
+import { categoryName, foodInfoFields, isPreviewProduct, packLabel, productAvailability, type Product } from "@/lib/commerce";
 import { hamperOffers } from "@/lib/hamper-offers";
 import { getBusinessDetails } from "@/lib/business-server";
 import { getStorefront } from "@/lib/store-server";
@@ -103,7 +103,7 @@ export default async function ProductPage({ params }: Props) {
           <ul>{contents?.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
         </div>}
         <ProductPurchase key={product.id} product={product}/>
-        {product.price !== null && (
+        {product.price !== null && !isPreviewProduct(product) && (
           <Link className="text-link mt-4" href={`/wholesale?product=${encodeURIComponent(product.id)}`}>Request a carton or wholesale quote <ChevronRight size={16}/></Link>
         )}
         {whatsapp && <div className="mt-4">

@@ -155,6 +155,14 @@ export function productLimit(product: Product) {
   return canCheckoutProduct(product) ? Math.min(product.stock, MAX_PER_ITEM) : 0;
 }
 
+export function isPreviewProduct(product: Product): product is Product & { demo: true; price: number } {
+  return product.demo === true && product.active && product.price !== null && product.price > 0;
+}
+
+export function basketProductLimit(product: Product) {
+  return isPreviewProduct(product) ? MAX_PER_ITEM : productLimit(product);
+}
+
 export const deliveryZones = [
   { id: "island", name: "Lagos Island", fee: 3000, time: "1–2 business days" },
   { id: "mainland", name: "Lagos Mainland", fee: 3500, time: "1–2 business days" },

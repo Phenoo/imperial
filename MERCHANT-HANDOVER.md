@@ -34,4 +34,8 @@ If a public database read fails or exceeds its 2.5-second rendering deadline, th
 
 Branded HTML/plain-text order email code is deployed with a monitored Reply-To setting. Resend account access, sender-domain verification and the setup test are still pending Google sign-in verification. Customer messages remain disabled until the provider is configured; simulated orders remain excluded.
 
+## Owner presentation
+
+While `STORE_DEMO_CATALOG=1`, the owner presentation displays 86 products with varied, deterministic presentation prices and normal price styling. The basket, quantities and delivery calculations work for review; order submission and payment initiation from these baskets are disabled. No approved database prices, stock, or pack specifications are overwritten. These prices are not merchant-approved selling prices. Set `STORE_OWNER_PREVIEW=0` to return to the database catalogue while keeping Paystack in sandbox. The presentation is also disabled automatically outside sandbox store mode. Existing sandbox payment disclosures remain visible.
+
 Before activating real payments in a separate approved task, review merchant-approved catalogue data, delivery operations, business contact details, fulfilment procedures and notification configuration. Existing unresolved pack specifications continue through the quotation route.

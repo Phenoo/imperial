@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { productLimit, sellingUnitLabel, type Product } from "@/lib/commerce";
+import { basketProductLimit, sellingUnitLabel, type Product } from "@/lib/commerce";
 import { AddButton, SaveButton } from "./product-card";
 import { Quantity } from "./shop-chrome";
 import { useShop } from "./shop-context";
@@ -11,7 +11,7 @@ export function ProductPurchase({ product }: { product: Product }) {
   const inBasket = shop.items.find((item) => item.product.id === product.id)?.quantity ?? 0;
   const minimum = Math.max(1, (product.minimumQuantity ?? 1) - inBasket);
   const [requested, setRequested] = useState(minimum);
-  const max = Math.max(0, productLimit(product) - inBasket);
+  const max = Math.max(0, basketProductLimit(product) - inBasket);
   const quantity = Math.max(minimum, Math.min(requested, max));
   const unit = sellingUnitLabel(product.saleUnit, quantity);
   return <div>

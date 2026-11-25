@@ -10,7 +10,7 @@ import { getBusinessDetails } from "@/lib/business-server";
 import { categories } from "@/lib/commerce";
 import { canonicalMetadata } from "@/lib/site-url";
 import { getStorefront } from "@/lib/store-server";
-import { payOnDeliveryEnabled } from "@/lib/store-settings";
+import { isOwnerPreview, payOnDeliveryEnabled } from "@/lib/store-settings";
 
 export const metadata = canonicalMetadata("/");
 
@@ -39,6 +39,7 @@ export default async function HomePage() {
   const [{ products }, { whatsapp }] = await Promise.all([getStorefront(), getBusinessDetails()]);
   const payOnDelivery = payOnDeliveryEnabled();
   const testCheckout = onlinePaymentMode() === "sandbox";
+  const ownerPreview = isOwnerPreview();
   const brandsInCatalogue = new Set(products.map((product) => product.brand));
   const brands = marqueeBrands.filter(({ name }) => brandsInCatalogue.has(name));
   const testimonialMessage = "Hello Imperial, I’d like to share a testimonial.\n\nWhat I ordered:\nMy experience:";
@@ -55,7 +56,7 @@ export default async function HomePage() {
       <section className={shelves.length ? "hero hero-with-products" : "hero"} aria-labelledby="hero-title">
         <div className="hero-copy">
           <h1 id="hero-title">Imported rice.<br/><em>Groceries by the carton.</em></h1>
-          <p>Browse imported groceries for home. For shops, caterers and bulk orders, request a wholesale quote.</p>
+          <p>{ownerPreview ? "Imported rice, tinned foods, noodles and more for homes, shops and caterers." : "Browse imported groceries for home. For shops, caterers and bulk orders, request a wholesale quote."}</p>
           <div className="hero-actions flex flex-wrap gap-3">
             <Link href="/shop" className="button button-gold">Shop Groceries</Link>
             <Link href="/wholesale" className="button button-wholesale">Buy Wholesale</Link>
@@ -77,7 +78,7 @@ export default async function HomePage() {
       </section>
 
       <section className="benefits" aria-label="Why shop Imperial">
-        <div><span className="benefit-icon"><Boxes size={22}/></span><span><strong><Link href="/wholesale">Carton sales &amp; wholesale</Link></strong><small>Request a quote for bulk orders</small></span></div>
+        <div><span className="benefit-icon"><Boxes size={22}/></span><span><strong><Link href="/wholesale">Carton sales &amp; wholesale</Link></strong><small>{ownerPreview ? "Groceries for homes and businesses" : "Request a quote for bulk orders"}</small></span></div>
         <div><span className="benefit-icon"><Truck size={22}/></span><span><strong><Link href="/delivery">Delivery across Nigeria</Link></strong><small>See Lagos rates or request a quote</small></span></div>
         <div><span className="benefit-icon"><CreditCard size={22}/></span><span>
           <strong>{testCheckout ? "Test online checkout" : payOnDelivery ? "Pay on delivery" : <Link href="/track">Order tracking</Link>}</strong>
@@ -113,7 +114,7 @@ export default async function HomePage() {
             <Link href="/shop" aria-label="Shop all products" className="button button-green mt-3 w-fit sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0">
               Shop all <ArrowRight size={18} aria-hidden="true"/>
             </Link>
-            <p className="sm:col-start-1 sm:row-start-2">Check pack sizes and prices, or request a carton quote for wholesale items.</p>
+            <p className="sm:col-start-1 sm:row-start-2">{ownerPreview ? "Explore our range of rice, tinned foods, noodles, drinks and more." : "Check pack sizes and prices, or request a carton quote for wholesale items."}</p>
           </div>
         </div>
         <ProductGrid products={products.slice(0, 16)}/>

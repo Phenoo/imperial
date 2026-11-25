@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Boxes, Heart, Plus } from "lucide-react";
-import { listedPrice, naira, packLabel, productAvailability, productLimit, sellingUnitLabel, type Product } from "@/lib/commerce";
+import { basketProductLimit, isPreviewProduct, listedPrice, naira, packLabel, productAvailability, sellingUnitLabel, type Product } from "@/lib/commerce";
 import { useShop } from "./shop-context";
 import { ProductImage } from "./product-image";
 
@@ -23,7 +23,7 @@ export function AddButton({ product, quantity }: { product: Product; quantity?: 
   }
   const minimum = product.minimumQuantity ?? 1;
   const increment = quantity ?? Math.max(1, minimum - inBasket);
-  const limit = productLimit(product);
+  const limit = basketProductLimit(product);
   const nextQuantity = inBasket + increment;
   const canAdd = increment >= 1 && nextQuantity >= minimum && nextQuantity <= limit;
   const unavailable = limit < minimum ? "Out of stock" : "Limit reached";
@@ -62,6 +62,7 @@ export function ProductPrice({ product }: { product: Product }) {
 }
 
 export function ProductAvailability({ product }: { product: Product }) {
+  if (isPreviewProduct(product)) return null;
   const availability = productAvailability(product);
   const label = availability === "in-stock" ? "In stock" : availability === "out-of-stock" ? "Out of stock" : "Confirm availability by quote";
   return <span className={`inline-flex rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold ${availability === "in-stock" ? "status-confirmed" : ""}`}>{label}</span>;
