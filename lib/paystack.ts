@@ -125,8 +125,7 @@ export async function reconcileOnlineOrder(order: Order) {
 
 export function validPaystackSignature(raw: Buffer, headers: Headers, key: string, signingSecret?: string, now = Date.now()) {
   const signed = headers.get("paystack-signature");
-  if (signed) {
-    if (!signingSecret) return false;
+  if (signed && signingSecret) {
     const fields = signed.split(",").map((part) => part.trim());
     const timestamps = fields.filter((part) => part.startsWith("t="));
     const timestamp = timestamps[0]?.slice(2);
@@ -148,7 +147,11 @@ export function validPaystackSignature(raw: Buffer, headers: Headers, key: strin
 export async function receivePaystackWebhook(raw: Buffer, headers: Headers) {
   const config = settings();
   if (!config) throw new StoreError("Paystack is not configured for this storefront.", 503);
-  if (!validPaystackSignature(raw, headers, config.key, process.env.PAYSTACK_WEBHOOK_SECRET?.trim())) throw new StoreError("Invalid webhook signature.", 401);
+  const signingSecret = process.env.PAYSTACK_WEBHOOK_SECRET?.trim();
+  if (!validPaystackSignature(raw, headers, config.key, signingSecret)) {
+    console.warn("Paystack webhook signature rejected", { modernHeader: headers.has("paystack-signature"), legacyHeader: headers.has("x-paystack-signature"), signingSecretConfigured: Boolean(signingSecret) });
+    throw new StoreError("Invalid webhook signature.", 401);
+  }
   let value: unknown;
   try { value = JSON.parse(raw.toString("utf8")); } catch { throw new StoreError("Invalid webhook payload.", 400); }
   const event = z.object({ event: z.string(), data: z.object({ reference: z.string().optional(), transaction: z.object({ reference: z.string() }).optional() }) }).safeParse(value);

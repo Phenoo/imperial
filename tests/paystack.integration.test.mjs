@@ -42,6 +42,12 @@ test("Paystack signatures reject altered, stale and downgraded webhooks", () => 
   assert.equal(validPaystackSignature(raw, modern, key, secret, now + 301000), false);
   assert.equal(validPaystackSignature(raw, modern, key), false);
   assert.equal(validPaystackSignature(raw, legacy, key, secret), false);
+  const dual = new Headers(modern);
+  dual.set("x-paystack-signature", digest);
+  assert.equal(validPaystackSignature(raw, dual, key), true);
+  assert.equal(validPaystackSignature(raw, dual, key, secret, now), true);
+  dual.set("paystack-signature", `t=${timestamp},v1=fixture:${"0".repeat(128)}`);
+  assert.equal(validPaystackSignature(raw, dual, key, secret, now), false);
 });
 
 test("sandbox checkout, verified callbacks and inventory are consistent", { timeout: 90000 }, async (t) => {
