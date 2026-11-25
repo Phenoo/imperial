@@ -33,6 +33,7 @@ npm run typecheck
 npm run build
 npm run test:integration
 node --experimental-strip-types --test tests/product.test.mjs tests/delivery.test.mjs
+node --experimental-strip-types --test tests/order-mail.test.mjs
 node --env-file-if-exists=.env.local --test tests/business.integration.test.mjs
 node --env-file-if-exists=.env.local --conditions=react-server --experimental-transform-types --test tests/paystack.integration.test.mjs
 ```
@@ -56,7 +57,9 @@ Run the original fulfilment integration suite with `STORE_DEMO_CATALOG=0` on the
 - Existing Bachs orders retain their original provider and can still be reconciled when the Bachs credentials remain configured. Keep `/api/checkout/bachs-webhook` registered for those orders.
 - Stock reservations, releases and verified late payments are processed transactionally. Test purchases remain simulated and cannot enter fulfilment or send real fulfilment notifications.
 - Refunds are issued through the original provider dashboard. Refresh payment status after a full reversal. Partial Paystack refunds require staff review in Paystack.
-- Set `RESEND_API_KEY` and `STORE_ORDER_FROM` to send receipts and tracking links to customers who provide an email. The sender must be verified in Resend. Simulated orders do not send fulfilment messages.
+- Set server-only `RESEND_API_KEY` and `STORE_ORDER_FROM` to send branded HTML and plain-text confirmations and tracking updates to customers who provide an email. Verify the sender domain in Resend first. Use a sending-only key scoped to that domain, and set `STORE_ORDER_REPLY_TO` to a monitored inbox when the sending address has no mailbox. Resend domain verification enables sending; it does not create an inbox.
+- The existing order lifecycle schedules these messages after stored order/payment events. Simulated orders and emulator projects do not send customer confirmations or fulfilment messages. Stored provider IDs indicate acceptance by Resend, not confirmed inbox delivery. The per-order lease and provider idempotency key protect against repeated callbacks. Failed sends do not receive a sent timestamp; an eligible later invocation can retry after the lease expires. There is no scheduled email-retry queue.
+- `tests/order-mail.test.mjs` uses an isolated in-memory database and mocked Resend responses. It cannot connect to Firebase or send email.
 
 ## Branded domain, search and analytics
 

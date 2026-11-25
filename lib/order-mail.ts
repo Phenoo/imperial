@@ -1,6 +1,8 @@
 import "server-only";
-import { naira, type Order, type OrderStatus } from "./commerce";
+import { z } from "zod";
+import type { Order, OrderStatus } from "./commerce";
 import { database } from "./firebase-server";
+import { fulfilmentEmailContent, orderReceiptContent, type OrderEmailContent } from "./order-email-content";
 import { fulfilmentStatusLabel, reliableFulfilment } from "./order-operations";
 import { storeUrl } from "./site-url";
 import { isDemoStore } from "./store-settings";
@@ -8,18 +10,25 @@ import { isDemoStore } from "./store-settings";
 function emailSettings() {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.STORE_ORDER_FROM?.trim();
+  const replyTo = process.env.STORE_ORDER_REPLY_TO?.trim();
   const url = storeUrl();
-  if (!key || !from || !url || process.env.FIREBASE_PROJECT_ID?.startsWith("demo-")) return null;
-  return { key, from, url };
+  if (!key || !from || !url || (replyTo && !z.email().safeParse(replyTo).success) || process.env.FIREBASE_PROJECT_ID?.startsWith("demo-")) return null;
+  return { key, from, replyTo, url };
 }
 
-function sendOrderEmail(config: NonNullable<ReturnType<typeof emailSettings>>, to: string, subject: string, text: string, idempotencyKey: string) {
-  return fetch("https://api.resend.com/emails", {
+async function sendOrderEmail(config: NonNullable<ReturnType<typeof emailSettings>>, to: string, content: OrderEmailContent, idempotencyKey: string) {
+  const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${config.key}`, "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-    body: JSON.stringify({ from: config.from, to: [to], subject, text }),
+    body: JSON.stringify({ from: config.from, to: [to], ...content, ...(config.replyTo && { reply_to: config.replyTo }) }),
     signal: AbortSignal.timeout(4000),
   });
+  if (!response.ok) {
+    console.warn("Order email provider returned", response.status);
+    return null;
+  }
+  const result: unknown = await response.json();
+  return result && typeof result === "object" && "id" in result && typeof result.id === "string" && result.id.trim() ? result.id : null;
 }
 
 export async function sendOrderReceipt(id: string) {
@@ -36,21 +45,9 @@ export async function sendOrderReceipt(id: string) {
       return entry;
     });
     if (!order) return;
-    const link = new URL(`/track?ref=${id}`, config.url);
-    const text = [
-      `Order ${id} · Imperial Foods & Beverages`,
-      ...order.items.map((item) => `${item.quantity} × ${item.name}${item.size ? ` (${item.size})` : ""} — ${naira(item.quantity * item.price)}`),
-      `Delivery: ${naira(order.shipping)}`,
-      `Total: ${naira(order.total)}`,
-      order.payment ? "Payment confirmed." : "Please pay when your order arrives.",
-      `Track your order: ${link.href}`,
-    ].join("\n");
-    const response = await sendOrderEmail(config, order.customer.email, `Imperial order ${id}`, text, `imperial-receipt/${id}`);
-    if (!response.ok) {
-      console.warn("Order receipt provider returned", response.status);
-      return;
-    }
-    await reference.update({ receiptSentAt: new Date().toISOString() });
+    const providerId = await sendOrderEmail(config, order.customer.email, orderReceiptContent(order, config.url), `imperial-receipt/${id}`);
+    if (!providerId) return;
+    await reference.update({ receiptSentAt: new Date().toISOString(), receiptProviderId: providerId });
   } catch {
     console.warn("Order receipt delivery could not be confirmed.");
   }
@@ -76,14 +73,9 @@ export async function sendFulfilmentUpdate(id: string, status: OrderStatus) {
     });
     if (!details) return;
     const stage = fulfilmentStatusLabel[status];
-    const link = new URL(`/track?ref=${id}`, config.url);
-    const text = [`Imperial order ${id}`, `Order update: ${stage}`, `Track your order: ${link.href}`].join("\n");
-    const response = await sendOrderEmail(config, details.email, `Imperial order update: ${stage}`, text, `imperial-fulfilment/${id}/${status}`);
-    if (!response.ok) {
-      console.warn("Order update email provider returned", response.status);
-      return;
-    }
-    await notice.update({ sentAt: new Date().toISOString() });
+    const providerId = await sendOrderEmail(config, details.email, fulfilmentEmailContent(id, stage, config.url), `imperial-fulfilment/${id}/${status}`);
+    if (!providerId) return;
+    await notice.update({ sentAt: new Date().toISOString(), providerId });
   } catch {
     console.warn("Order update email delivery could not be confirmed.");
   }
