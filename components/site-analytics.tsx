@@ -36,6 +36,7 @@ function Analytics({ id, mode }: { id: string; mode: "sandbox" | "live" }) {
   const pathname = usePathname();
   const consent = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
   const [editing, setEditing] = useState(false);
+  const [bootstrapReady, setBootstrapReady] = useState(false);
   const [ready, setReady] = useState(false);
   const allowed = consent === "granted";
 
@@ -74,16 +75,19 @@ function Analytics({ id, mode }: { id: string; mode: "sandbox" | "live" }) {
   }, [allowed, ready, id, pathname, mode]);
 
   return <>
-    {allowed && publicPage(pathname) && <Script id="imperial-google-analytics" src={`https://www.googletagmanager.com/gtag/js?id=${id}`} strategy="afterInteractive" onReady={() => {
-      if (snapshot() !== "granted" || !publicPage(location.pathname)) return;
-      window.dataLayer ??= [];
-      window.gtag ??= (...args: unknown[]) => { window.dataLayer?.push(args); };
+    {allowed && publicPage(pathname) && <>
+      <Script id="imperial-ga-bootstrap" strategy="afterInteractive" onReady={() => setBootstrapReady(true)}>
+        {"window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments);};"}
+      </Script>
+      {bootstrapReady && <Script id="imperial-google-analytics" src={`https://www.googletagmanager.com/gtag/js?id=${id}`} strategy="afterInteractive" onReady={() => {
+      if (snapshot() !== "granted" || !publicPage(location.pathname) || !window.gtag) return;
       window[`ga-disable-${id}`] = false;
       window.gtag("consent", "default", { analytics_storage: "granted", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" });
       window.gtag("js", new Date());
       window.gtag("config", id, { send_page_view: false, allow_google_signals: false, allow_ad_personalization_signals: false, page_location: location.origin + pathname, page_referrer: "" });
       setReady(true);
-    }}/>} 
+      }}/>} 
+    </>}
     {publicPage(pathname) && <>
       <div className="analytics-preferences"><button type="button" onClick={() => setEditing(true)}>Analytics preferences</button></div>
       {(consent === "pending" || editing) && <section className="analytics-choice" aria-label="Analytics preferences">
