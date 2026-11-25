@@ -5,6 +5,7 @@ import type { DocumentSnapshot } from "firebase-admin/firestore";
 import { ZodError, type z } from "zod";
 import { knownProductDetails, starterCatalog } from "./catalog";
 import { catalogueSuggestionsCollection } from "./catalogue-invite";
+import { catalogueFallback } from "./catalogue-fallback";
 import { canCheckoutProduct, isMultiUnit, naira, nextStatuses, packLabel, productSpecification, publicProduct, sellingUnitLabel, type OnlinePayment, type PaymentProvider, type Order, type OrderStatus, type OrderSummary, type Product } from "./commerce";
 import { estimateDelivery } from "./delivery-estimate";
 import { getDeliverySettings } from "./delivery-server";
@@ -13,6 +14,7 @@ import { database, firebaseProjectId } from "./firebase-server";
 import { orderOperationsMode, reliableFulfilment, type TrackingResult } from "./order-operations";
 import { bulkPricingSchema, checkoutSchema, productSchema, type CatalogueUpdate } from "./validation";
 import { isDemoStore } from "./store-settings";
+import { cachedPublicStoreRead } from "./public-store-cache";
 
 export class StoreError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
@@ -58,16 +60,16 @@ function readOrder(snapshot: DocumentSnapshot): Order {
   return { ...snapshot.data(), id: snapshot.id } as Order;
 }
 
-export const getStorefront = cache(async (): Promise<{ products: Product[]; available: boolean; catalogFailed: boolean }> => {
+type Storefront = { products: Product[]; available: boolean; catalogFailed: boolean };
+const readPublicCatalogue = cachedPublicStoreRead<Storefront>("catalogue", async () => {
+  const results = await database().collection("products").where("active", "==", true).get();
+  const products = results.docs.map(readProduct).map(publicProduct).sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
+  return { products, available: true, catalogFailed: false };
+}, () => ({ products: catalogueFallback(), available: false, catalogFailed: true }));
+
+export const getStorefront = cache(async (): Promise<Storefront> => {
   if (!firebaseProjectId()) return { products: (isDemoStore() ? demoCatalog() : starterCatalog).map(publicProduct), available: false, catalogFailed: false };
-  try {
-    const results = await database().collection("products").where("active", "==", true).get();
-    const products = results.docs.map(readProduct).map(publicProduct).sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
-    return { products, available: true, catalogFailed: false };
-  } catch (error) {
-    console.error("Catalog read failed", error);
-    return { products: [], available: false, catalogFailed: true };
-  }
+  return readPublicCatalogue();
 });
 
 export function toSummary(order: Order): OrderSummary {

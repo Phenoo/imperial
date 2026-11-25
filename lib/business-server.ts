@@ -8,6 +8,7 @@ import {
 import { database, firebaseProjectId } from "./firebase-server";
 import { StoreError } from "./store-server";
 import { supportContact } from "./store-settings";
+import { cachedPublicStoreRead } from "./public-store-cache";
 
 function defaultBusiness() {
   const contact = supportContact();
@@ -38,15 +39,9 @@ function version(snapshot: FirebaseFirestore.DocumentSnapshot) {
   return snapshot.updateTime ? `${snapshot.updateTime.seconds}:${snapshot.updateTime.nanoseconds}` : null;
 }
 
+const readPublicBusiness = cachedPublicStoreRead("business", async () => readBusiness((await settingsRef().get()).data()), defaultBusiness);
 export const getBusinessDetails = cache(async (): Promise<BusinessDetails> => {
-  let business = defaultBusiness();
-  if (firebaseProjectId()) {
-    try {
-      business = readBusiness((await settingsRef().get()).data());
-    } catch (error) {
-      console.error("Public business details unavailable", error instanceof Error ? error.message : error);
-    }
-  }
+  const business = firebaseProjectId() ? await readPublicBusiness() : defaultBusiness();
   return {
     ...business,
     whatsapp: business.whatsappNumber ? `https://wa.me/${business.whatsappNumber.replace(/^\+/, "")}` : null,
@@ -96,23 +91,22 @@ export async function saveSupportCase(supportCase: SupportCase) {
   return supportCase;
 }
 
+const readPublicReviews = cachedPublicStoreRead("reviews", async () => {
+  const snapshot = await database().collection("customerReviews").where("status", "==", "approved").get();
+  return snapshot.docs.flatMap((record) => {
+    const { data } = reviewSchema.safeParse(record.data());
+    if (!data?.publishPermission) return [];
+    const { id, text, date, rating, displayName, photoUrl, photoAlt, identityPermission, productId } = data;
+    return [{
+      id, text, date, rating, productId,
+      displayName: identityPermission ? displayName : "",
+      photoUrl: identityPermission ? photoUrl : "",
+      photoAlt: identityPermission ? photoAlt : "",
+    }];
+  }).sort((first, second) => second.date.localeCompare(first.date));
+}, () => []);
+
 export const getApprovedReviews = cache(async (productId?: string) => {
   if (!firebaseProjectId()) return [];
-  try {
-    const snapshot = await database().collection("customerReviews").where("status", "==", "approved").get();
-    return snapshot.docs.flatMap((record) => {
-      const { data } = reviewSchema.safeParse(record.data());
-      if (!data?.publishPermission || (productId && data.productId !== productId)) return [];
-      const { id, text, date, rating, displayName, photoUrl, photoAlt, identityPermission } = data;
-      return [{
-        id, text, date, rating,
-        displayName: identityPermission ? displayName : "",
-        photoUrl: identityPermission ? photoUrl : "",
-        photoAlt: identityPermission ? photoAlt : "",
-      }];
-    }).sort((first, second) => second.date.localeCompare(first.date)).slice(0, 6);
-  } catch (error) {
-    console.error("Approved reviews unavailable", error instanceof Error ? error.message : error);
-    return [];
-  }
+  return (await readPublicReviews()).filter((review) => !productId || review.productId === productId).slice(0, 6);
 });

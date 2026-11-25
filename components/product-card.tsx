@@ -37,13 +37,13 @@ export function ProductCard({ product }: { product: Product }) {
   const minimum = product.minimumQuantity ?? 1;
   return <article className="product-card">
     <div className="product-card-visual">
-      <Link href={`/products/${product.id}`} aria-label={product.name}><ProductImage product={product} sizes="(max-width: 600px) 47vw, (max-width: 980px) 33vw, 310px" /></Link>
+      <Link href={`/products/${product.id}`} prefetch={false} aria-label={product.name}><ProductImage product={product} sizes="(max-width: 600px) 47vw, (max-width: 980px) 33vw, 310px" /></Link>
       {product.comparePrice && <span className="product-badge">Good deal</span>}
       <SaveButton product={product}/>
     </div>
     <div className="product-card-copy">
       <p className="product-meta">{product.brand}</p>
-      <h3><Link href={`/products/${product.id}`}>{product.name}</Link></h3>
+      <h3><Link href={`/products/${product.id}`} prefetch={false}>{product.name}</Link></h3>
       <p className="product-meta mb-2">{packLabel(product)}</p>
       {product.price !== null && product.purchaseMode === "wholesale" && <p className="product-meta mb-2">Wholesale</p>}
       {minimum > 1 && <p className="product-meta mb-2">Minimum {minimum} {sellingUnitLabel(product.saleUnit, minimum)}</p>}

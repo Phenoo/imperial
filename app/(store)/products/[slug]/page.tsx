@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -58,8 +59,7 @@ function ProductInformation({ product }: { product: Product }) {
 }
 
 export default async function ProductPage({ params }: Props) {
-  const [{ slug }, { products, available, catalogFailed }, { whatsapp }] = await Promise.all([params, getStorefront(), getBusinessDetails()]);
-  if (catalogFailed) throw new Error("The product catalogue is temporarily unavailable.");
+  const [{ slug }, { products, available }, { whatsapp }] = await Promise.all([params, getStorefront(), getBusinessDetails()]);
   const product = products.find((entry) => entry.id === slug);
   if (!product) notFound();
   const hamper = hamperOffers.find((offer) => offer.id === product.id);
@@ -113,7 +113,7 @@ export default async function ProductPage({ params }: Props) {
       </div>
     </section>
     <ProductInformation product={product}/>
-    <ApprovedReviews productId={product.id}/>
+    <Suspense fallback={null}><ApprovedReviews productId={product.id}/></Suspense>
     {related.length > 0 && <section className="home-section"><div className="section-heading"><div><span className="eyebrow">IN THE SAME CATEGORY</span><h2>More to explore</h2></div></div><div className="product-grid">{related.map((item) => <ProductCard key={item.id} product={item}/>)}</div></section>}
   </div>;
 }

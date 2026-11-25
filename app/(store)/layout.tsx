@@ -13,7 +13,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   ]);
   return <ShopProvider products={products} available={available} delivery={delivery} whatsapp={contact.whatsapp}>
     <Header/>
-    {catalogFailed && <div className="shell inline-notice" role="status">The catalogue is temporarily unavailable. Try again in a moment.</div>}
+    {catalogFailed && <div className="shell inline-notice" role="status">Please contact us to confirm current prices and stock.</div>}
     <main id="main">{children}</main>
     <Footer contact={contact}/>
     <SavedProductsPanel/>

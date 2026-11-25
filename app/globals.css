@@ -663,8 +663,6 @@ button:disabled { cursor: not-allowed; }
 .catalogue-review-summary { margin-bottom: 10px; }
 .catalogue-review-summary button, .catalogue-review-actions button { min-height: 44px; }
 .catalogue-submission { margin-bottom: 12px; padding: 9px 10px; border: 1px solid #d4e2d6; border-radius: 7px; background: #edf3e9; color: var(--pine-deep); font-size: 13px; }
-.analytics-preferences { background: var(--cream, #faf8f1); padding: 12px 24px; text-align: center; font-size: 13px; }
-.analytics-preferences button { min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
 .analytics-choice { position: fixed; left: 16px; bottom: 88px; z-index: 90; width: min(440px, calc(100vw - 32px)); padding: 20px; border: 1px solid #d9dfd5; border-radius: 14px; background: #fffef9; color: #193e30; box-shadow: 0 8px 40px #18392d26; }
 .analytics-choice strong { font-size: 19px; }
 .analytics-choice p { font-size: 14px; line-height: 1.6; margin: 8px 0 14px; }

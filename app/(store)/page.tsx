@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import { ArrowRight, Boxes, CreditCard, Truck } from "lucide-react";
 import { BrandMarquee } from "@/components/brand-marquee";
 import { ProductGrid } from "@/components/catalog-view";
@@ -65,8 +66,8 @@ export default async function HomePage() {
             <h2 id={`hero-${shelf.id}`}>{shelf.title}</h2>
             <ul>
               {shelf.items.map((product) => <li key={product.id}>
-                <Link href={`/products/${product.id}`} aria-label={product.name} className="hero-pack">
-                  <span className="hero-pack-photo"><Image src={product.image} alt="" fill unoptimized loading="eager"/></span>
+                <Link href={`/products/${product.id}`} prefetch={false} aria-label={product.name} className="hero-pack">
+                  <span className="hero-pack-photo"><Image src={product.image} alt="" fill sizes="(max-width: 700px) 26vw, 150px" unoptimized={!product.image.startsWith("/images/")} loading="eager"/></span>
                   <span>{product.brand}</span>
                 </Link>
               </li>)}
@@ -118,7 +119,7 @@ export default async function HomePage() {
         <ProductGrid products={products.slice(0, 16)}/>
       </section>}
 
-      <ApprovedReviews/>
+      <Suspense fallback={null}><ApprovedReviews/></Suspense>
       {whatsapp && <section id="testimonials" aria-labelledby="testimonial-title" className="home-section flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--line)] bg-white p-5 sm:p-7">
         <div>
           <h2 id="testimonial-title" className="text-xl font-extrabold sm:text-2xl">Share a testimonial</h2>

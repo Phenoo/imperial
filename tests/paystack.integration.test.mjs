@@ -15,6 +15,7 @@ delete process.env.PAYSTACK_WEBHOOK_SECRET;
 
 registerHooks({ resolve(specifier, context, next) {
   if (specifier === "server-only") return next("next/dist/compiled/server-only/empty.js", context);
+  if (specifier === "next/cache") return next("next/cache.js", context);
   if (context.parentURL?.endsWith(".ts") && specifier.startsWith(".") && !/\.[a-z]+$/.test(specifier)) return next(specifier + ".ts", context);
   return next(specifier, context);
 } });

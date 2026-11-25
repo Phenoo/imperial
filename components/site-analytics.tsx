@@ -16,6 +16,7 @@ declare global {
 
 const storageKey = "imperial-analytics-consent-v1";
 const changeEvent = "imperial:analytics-consent";
+const preferencesEvent = "imperial:open-analytics-preferences";
 let temporaryChoice: string | null = null;
 function snapshot() {
   try { return temporaryChoice ?? localStorage.getItem(storageKey) ?? "pending"; }
@@ -45,6 +46,12 @@ function Analytics({ id, mode }: { id: string; mode: "sandbox" | "live" }) {
   const [bootstrapReady, setBootstrapReady] = useState(false);
   const [ready, setReady] = useState(false);
   const allowed = consent === "granted";
+
+  useEffect(() => {
+    const open = () => setEditing(true);
+    window.addEventListener(preferencesEvent, open);
+    return () => window.removeEventListener(preferencesEvent, open);
+  }, []);
 
   function choose(value: "granted" | "denied") {
     temporaryChoice = value;
@@ -94,7 +101,6 @@ function Analytics({ id, mode }: { id: string; mode: "sandbox" | "live" }) {
       }}/>} 
     </>}
     {publicPage(pathname) && <>
-      <div className="analytics-preferences"><button type="button" onClick={() => setEditing(true)}>Analytics preferences</button></div>
       {(consent === "pending" || editing) && <section className="analytics-choice" aria-label="Analytics preferences">
         <strong>Your privacy choices</strong>
         <p>Allow Google Analytics to help us understand visits and shopping activity? It is optional. Your choice will not affect shopping. <Link href="/privacy">Privacy policy</Link></p>
@@ -102,6 +108,10 @@ function Analytics({ id, mode }: { id: string; mode: "sandbox" | "live" }) {
       </section>}
     </>}
   </>;
+}
+
+export function AnalyticsPreferences() {
+  return <button type="button" className="button button-outline mt-3" onClick={() => window.dispatchEvent(new Event(preferencesEvent))}>Cookie settings</button>;
 }
 
 export function SiteAnalytics({ id, mode }: { id?: string; mode: "sandbox" | "live" }) {

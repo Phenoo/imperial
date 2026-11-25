@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { database, firebaseProjectId } from "./firebase-server";
+import { cachedPublicStoreRead } from "./public-store-cache";
 import {
   defaultDeliveryConfiguration, deliveryConfigurationSchema, deliverySettings, type DeliveryConfiguration,
 } from "./store-settings";
@@ -20,15 +21,9 @@ export async function getDeliveryConfiguration() {
   return record(await reference().get());
 }
 
-const publicRules = cache(async () => {
-  if (!firebaseProjectId()) return deliverySettings();
-  try {
-    return deliverySettings((await getDeliveryConfiguration()).configuration);
-  } catch (error) {
-    console.error("Store delivery configuration unavailable", error instanceof Error ? error.message : error);
-    return deliverySettings();
-  }
-});
+const readPublicRules = cachedPublicStoreRead("delivery", async () =>
+  deliverySettings((await getDeliveryConfiguration()).configuration), () => deliverySettings());
+const publicRules = cache(async () => firebaseProjectId() ? readPublicRules() : deliverySettings());
 
 export async function getDeliverySettings(transaction?: FirebaseFirestore.Transaction) {
   if (!transaction) return publicRules();
