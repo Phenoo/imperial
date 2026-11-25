@@ -13,8 +13,9 @@ import { orderId } from "@/lib/validation";
 
 export const metadata: Metadata = { title: "Payment status", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
-export default async function PaymentResult({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
-  const parsed = orderId.safeParse((await searchParams).ref);
+export default async function PaymentResult({ searchParams }: { searchParams: Promise<{ ref?: string; reference?: string }> }) {
+  const query = await searchParams;
+  const parsed = orderId.safeParse(query.ref ?? query.reference);
   const order = parsed.success && firebaseProjectId() ? await findOnlineOrder(parsed.data) : null;
   if (!order?.payment) return <div className="shell subpage"><section className="checkout-success empty-state">
     <ShoppingBag size={44}/><h1>Payment reference unavailable</h1><Link className="button button-green" href="/checkout">Return to checkout</Link>
